@@ -20,9 +20,14 @@
 	</head>
 	<body>
 		<select id = "ports"></select>
-		<input type="text" id="baud" value="9600" size="5"></input>
+		<input type="number" id="baud" value="9600" size="5"></input>
 		<input type="button" id="open" value="開始"></input>
 		<input type="button" id="close" value="終了"></input>
+
+		<input type="number" id="yaxisVal" value="300" size="5"></input>
+		<input type="button" id="setVal" value="Y軸最大値を設定"></input>
+		<input type="number" id="cautionVal" value="200" size="5"></input>
+		<input type="button" id="setCautionVal" value="危険値設定"></input>
 
 		<div class="row">
 			<div class="col span_8">

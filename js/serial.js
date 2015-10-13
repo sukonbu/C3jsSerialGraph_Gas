@@ -1,3 +1,4 @@
+	//chrome packaged appではalert()は使用が制限されている
 	(function(){
 		var select = null; //セレクトボックスの選択肢を格納するもの
 		var connectionId = 0;
@@ -20,6 +21,8 @@
 
 		var timeArray =[];
 		var nowDay;
+
+		var caution = 200;
 
 		var chart = c3.generate({
 			bindto: '#chart',
@@ -58,8 +61,8 @@
 						//height: 20
 					},
 					y:{
-						label:'濃度（ppm）',
-						max: 25,
+						label:'濃度',
+						max: 300,
 						min: 0
 					},
 
@@ -94,6 +97,8 @@
 
 			document.getElementById('open').addEventListener('click',openPort);
 			document.getElementById('close').addEventListener('click',closePort);
+			document.getElementById('setVal').addEventListener('click',setYaxisVal);
+			document.getElementById('setCautionVal').addEventListener('click',setCautionVal);
 
 			chrome.serial.getDevices(function(devices){
 				devices.forEach(function(port){	
@@ -107,13 +112,34 @@
 
 		}
 
+		function setYaxisVal(){
+			var maxYVal = parseFloat(document.getElementById('yaxisVal').value);
+			console.log(maxYVal);
+			if(isNaN(maxYVal)){
+				consile.log("Y軸最大値の設定が不正な値です");
+			}else {
+				chart.axis.max({
+					y:maxYVal
+				});
+			}
+		}
+		function setCautionVal(){
+			var cautionVal = parseFloat(document.getElementById('cautionVal').value);
+			console.log(cautionVal);
+			if(isNaN(cautionVal)){
+				console.log("危険値の設定が不正な値です");
+			}else {
+				caution = cautionVal;
+			}
+		}
+
 		var onConnectCallback = function(connectionInfo){
 			connectionId = connectionInfo.connectionId;
 		};
 
 		function openPort(){
 			selectedPort = select.childNodes[select.selectedIndex].value;
-			var baudRate = parseInt(document.getElementById('baud').value);
+			var baudRate = parseInt(document.getElementById('baud').value,10);
 			var options = {
 				'bitrate':baudRate,
 				'receiveTimeout':1000
@@ -172,21 +198,24 @@
 			document.getElementById('w_Alcohol').getElementsByClassName('caution')[0].innerText = "平常";
 			document.getElementById('w_Methane').getElementsByClassName('caution')[0].innerText = "平常";
 			document.getElementById('w_Hydrogen').getElementsByClassName('caution')[0].innerText = "平常";
-			if (data.Alcohol > calcGasValue(150)) {
+			//if (data.Alcohol > calcGasValue(caution)) {
+			if (data.Alcohol > caution) {
 				document.getElementById('w_Alcohol').classList.add('danger');
 				document.getElementById('w_Alcohol').getElementsByClassName('caution')[0].innerText = "危険";
 			} else {
 				document.getElementById('w_Alcohol').classList.remove('danger');
 			}
 
-			if (data.Methane > calcGasValue(150)) {
+			//if (data.Methane > calcGasValue(caution)) {
+			if (data.Methane > caution) {
 				document.getElementById('w_Methane').classList.add('danger');
 				document.getElementById('w_Methane').getElementsByClassName('caution')[0].innerText = "危険";
 			} else {
 				document.getElementById('w_Methane').classList.remove('danger');
 			}
 
-			if (data.Hydrogen > calcGasValue(150)) {
+			//if (data.Hydrogen > calcGasValue(caution)) {
+			if (data.Hydrogen > caution) {
 				document.getElementById('w_Hydrogen').classList.add('danger');
 				document.getElementById('w_Hydrogen').getElementsByClassName('caution')[0].innerText = "危険";
 			} else {
@@ -214,8 +243,8 @@
 						//javascriptではforEachは配列の中身を変化させることはできない(参照のみ)
 						//rubyとかjava8とかにもあるmapメソッドを使う(中身を走査する点ではforEachと同じ)
 						values = values.map(function(c){
-							//return (c * 100/1024).toFixed(2);
-							return calcGasValue(c).toFixed(2);
+							//return calcGasValue(c).toFixed(2); //ppm計算っぽいなにか
+							return c;   //そのままの値を出力
 						});
 
 						//console.log(values);
