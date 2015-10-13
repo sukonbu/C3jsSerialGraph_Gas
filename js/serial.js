@@ -24,7 +24,7 @@
 		var chart = c3.generate({
 			bindto: '#chart',
 			size:{
-				width: 1000,
+				width: 950,
 				height: 500
 			},
 			data: {
@@ -73,7 +73,6 @@
 				}
 
 			});
-
 		function calcGasValue(value){
 			var val = 0;
 			console.log(value);
