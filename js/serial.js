@@ -22,39 +22,65 @@
 		var nowDay;
 
 		var chart = c3.generate({
-				bindto: '#chart',
-				data: {
-					x: 'x',
-					columns:[
-						['x',[]],
-						['Alcohol',[]],
-						['Methane',[]],
-						['Hydrogen',[]],
-					],
-
-					type: 'line'
+			bindto: '#chart',
+			size:{
+				width: 1000,
+				height: 500
+			},
+			data: {
+				x: 'x',
+				columns:[
+				['x',[]],
+				['Alcohol',[]],
+				['Methane',[]],
+				['Hydrogen',[]],
+				],
+				names:{
+					Alcohol:'アルコール',
+					Methane:'メタン',
+					Hydrogen:'水素'
 				},
-				axis:{
-					x:{
-						type:'timeseries',
-						tick: {
-							format: function(x){return x.getHours()+':'+x.getMinutes()+':'+x.getSeconds()+' '+x.getMilliseconds();},
-							outer: false
-						},
-						padding:{
-							left:20,
-							right:500
-						},
+
+				type: 'line',
+			},
+			axis:{
+				x:{
+					type:'timeseries',
+					label:'計測時刻(時:分：秒 ミリ秒)',
+					tick: {
+						format: function(x){return x.getHours()+':'+x.getMinutes()+':'+x.getSeconds()+' '+x.getMilliseconds();},
+						outer: false
+					},
+					padding:{
+						left:20,
+						right:500
+					},
 						//height: 20
 					},
 					y:{
-						max: 95,  //最大1024
-						min: 5
+						label:'濃度（ppm）',
+						min: 0
 					},
 
+				},
+				grid:{
+					x:{
+						show:true
+					},
+					y:{
+						show:true
+					}
 				}
 
-		});
+			});
+
+		function calcGasValue(value){
+			var val = 0;
+			console.log(value);
+			val = Math.pow(10,3.0-2.7*Math.log10(22*(1023/value-1)/10));
+			console.log(val);
+			return val;
+		}
 
 
 		function convertArrayBufferToString(buf){
@@ -70,13 +96,13 @@
 			document.getElementById('close').addEventListener('click',closePort);
 
 			chrome.serial.getDevices(function(devices){
-					devices.forEach(function(port){	
+				devices.forEach(function(port){	
 							//select menuに追加
 							var option = document.createElement('option');
 							option.value = port.path;
 							option.text = port.displayName ? port.displayName : port.path;
 							select.appendChild(option);
-					});
+						});
 			});
 
 		}
@@ -92,6 +118,9 @@
 				'bitrate':baudRate,
 				'receiveTimeout':1000
 			};
+
+			graphArray = [];
+			timeArray = [];
 
 			chrome.serial.connect(selectedPort,options,onConnectCallback);
 
@@ -139,11 +168,31 @@
 			document.getElementById('w_Alcohol').getElementsByClassName('data')[0].innerText = data.Alcohol;
 			document.getElementById('w_Methane').getElementsByClassName('data')[0].innerText = data.Methane;
 			document.getElementById('w_Hydrogen').getElementsByClassName('data')[0].innerText = data.Hydrogen;
-			if (data.Alcohol > 50) {
+
+			document.getElementById('w_Alcohol').getElementsByClassName('caution')[0].innerText = "平常";
+			document.getElementById('w_Methane').getElementsByClassName('caution')[0].innerText = "平常";
+			document.getElementById('w_Hydrogen').getElementsByClassName('caution')[0].innerText = "平常";
+			if (data.Alcohol > calcGasValue(150)) {
 				document.getElementById('w_Alcohol').classList.add('danger');
+				document.getElementById('w_Alcohol').getElementsByClassName('caution')[0].innerText = "危険";
 			} else {
 				document.getElementById('w_Alcohol').classList.remove('danger');
 			}
+
+			if (data.Methane > calcGasValue(150)) {
+				document.getElementById('w_Methane').classList.add('danger');
+				document.getElementById('w_Methane').getElementsByClassName('caution')[0].innerText = "危険";
+			} else {
+				document.getElementById('w_Methane').classList.remove('danger');
+			}
+
+			if (data.Hydrogen > calcGasValue(150)) {
+				document.getElementById('w_Hydrogen').classList.add('danger');
+				document.getElementById('w_Hydrogen').getElementsByClassName('caution')[0].innerText = "危険";
+			} else {
+				document.getElementById('w_Hydrogen').classList.remove('danger');
+			}
+
 		}
 
 		var onReceiveCallback = function(info){
@@ -159,16 +208,17 @@
 						//--グラフに値を追加する部分---
 						var time = new Date();
 						var values = str2.split(',');
-							
-						console.log(values);
+
+						//console.log(values);
 
 						//javascriptではforEachは配列の中身を変化させることはできない(参照のみ)
 						//rubyとかjava8とかにもあるmapメソッドを使う(中身を走査する点ではforEachと同じ)
 						values = values.map(function(c){
-							return (c * 100/1024).toFixed(2);
+							//return (c * 100/1024).toFixed(2);
+							return calcGasValue(c).toFixed(2);
 						});
 
-						console.log(values);
+						//console.log(values);
 
 						//必要な構造→  [['x',,,,,,],['serial',値0,値1,値2,値3,,,],[],[]
 						var timeSerial = ['x'];
@@ -181,19 +231,19 @@
 						//ここではcolumnsの中身に、先頭に'serial'を置いた配列columnをpushする
 
 						updateDisplay({
-								time: time,
-								Alcohol: values[0],
-								Methane: values[1],
-								Hydrogen: values[2],
+							time: time,
+							Alcohol: values[0],
+							Methane: values[1],
+							Hydrogen: values[2],
 						});
 						if(graphArray.length >= 20){
 							chart.flow({
-									columns: [
-										['x',time],
-										['Alcohol',values[0]],
-										['Methane',values[1]],
-										['Hydrogen',values[2]],
-									]
+								columns: [
+								['x',time],
+								['Alcohol',values[0]],
+								['Methane',values[1]],
+								['Hydrogen',values[2]],
+								]
 							});
 
 						}else{
@@ -202,13 +252,13 @@
 							graphArray.push(values);
 
 							graphArray.forEach(function(c){
-									columnSake.push(c[0]);
-									columnMethane.push(c[1]);
-									columnHydro.push(c[2]);
+								columnSake.push(c[0]);
+								columnMethane.push(c[1]);
+								columnHydro.push(c[2]);
 							});
 
 							timeArray.forEach(function(c){
-									timeSerial.push(c);
+								timeSerial.push(c);
 							});
 
 							columns.push(timeSerial);
@@ -218,7 +268,7 @@
 							columns.push(columnHydro);
 
 							chart.load({
-									columns: columns   
+								columns: columns   
 							});
 
 						}
